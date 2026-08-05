@@ -52,7 +52,7 @@ experimental:
 
 Or via CLI flags:
 
-```
+```text
 --experimental.localPlugins.requestid.moduleName=github.com/alteos-gmbh/traefik-plugin-request-id
 ```
 
@@ -79,20 +79,24 @@ The key under `plugin` (`requestid` above) must match the name used in `localPlu
 
 ### Docker Compose example
 
+This uses the file provider so the example stays self-contained, with `dynamic.yml` holding the middleware and router definitions from step 3.
+
 ```yaml
 services:
   traefik:
     image: traefik:v3.5
     command:
-      - --providers.docker=true
+      - --providers.file.filename=/etc/traefik/dynamic.yml
       - --entrypoints.web.address=:80
       - --experimental.localPlugins.requestid.moduleName=github.com/alteos-gmbh/traefik-plugin-request-id
     ports:
       - "80:80"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
       - ./plugins-local/src/github.com/alteos-gmbh/traefik-plugin-request-id:/plugins-local/src/github.com/alteos-gmbh/traefik-plugin-request-id:ro
 ```
+
+If you use the Docker provider instead, be aware that mounting `/var/run/docker.sock` into Traefik grants it the Docker API, which is equivalent to control over the host. Mounting the socket `:ro` does not limit this, because the API is reached through the socket rather than by writing to the file. For production, put a socket proxy with an operation allowlist in front of it, or use a provider that does not need the socket at all.
 
 ## Releasing
 
@@ -124,6 +128,7 @@ go install github.com/traefik/yaegi/cmd/yaegi@v0.16.1
 ```
 
 Based upon:
+
 - github.com/mdklapwijk/traefik-plugin-request-id
 - github.com/pipe01/plugin-requestid
 - github.com/gamblingpro/plugin-requestid

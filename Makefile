@@ -1,4 +1,4 @@
-.PHONY: default test yaegi-test vendor vendor-check clean
+.PHONY: default test yaegi-test vendor vendor-check
 
 MODULE  := github.com/alteos-gmbh/traefik-plugin-request-id
 GOPATH  ?= $(shell go env GOPATH)
@@ -29,5 +29,5 @@ vendor:
 vendor-check: vendor
 	git diff --exit-code -- go.mod go.sum vendor/
 
-clean:
-	rm -rf ./vendor
+# There is deliberately no clean target. vendor/ is committed and required by
+# -mod=vendor, so deleting it just breaks the build until it is regenerated.
