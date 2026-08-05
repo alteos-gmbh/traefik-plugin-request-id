@@ -7,7 +7,6 @@ on:
   pull_request:
 
 env:
-  GO_VERSION: "1.21"
   YAEGI_VERSION: v0.16.1
   MODULE_PATH: github.com/alteos-gmbh/traefik-plugin-request-id
 
@@ -17,24 +16,31 @@ permissions:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: codebuild-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    # Go deliberately comes from the official image rather than the org's
+    # build/go image. That one is FROM golang:alpine and only rebuilds when its
+    # own Dockerfile changes, so the Go version it carries is frozen at whenever
+    # that last happened and cannot be pinned from here. Debian-based rather
+    # than Alpine, so the Node the runner injects for JavaScript actions has the
+    # glibc it needs.
+    container:
+      image: golang:1.26
 
     steps:
       # Yaegi resolves imports through GOPATH, so the sources must sit at
       # $GOPATH/src/<module path> for the interpreter check below.
       - name: Check out into GOPATH
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: go/src/${{ env.MODULE_PATH }}
           # This job runs pull request code and no step needs git auth, so do
           # not leave GITHUB_TOKEN in the local git config.
           persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: false
+      # The container runs as root over a workspace the runner created, which
+      # git otherwise refuses to read.
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "${GITHUB_WORKSPACE}/go/src/${MODULE_PATH}"
 
       - name: Check formatting
         working-directory: go/src/${{ env.MODULE_PATH }}
@@ -82,10 +88,16 @@ jobs:
 
   manifest:
     name: Manifest
-    runs-on: ubuntu-latest
+    runs-on: codebuild-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+      # Needed to pull the image from the org's private GHCR registry.
+      packages: read
+    container:
+      image: ghcr.io/alteos-gmbh/docker-images/build/python:latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 

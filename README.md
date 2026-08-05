@@ -121,11 +121,25 @@ If you use the Docker provider instead, be aware that mounting `/var/run/docker.
 
 ## Releasing
 
-Tag a semantic version and push it. The release workflow runs the test suite under both the Go toolchain and Yaegi, then publishes a GitHub release with generated notes. Consumers pin to that tag in step 1 above.
+Releases happen on merge to `master`. Nothing needs tagging by hand: the release workflow runs the test suite under both the Go toolchain and Yaegi, works out the next version, and creates the tag and GitHub release itself. Consumers pin to that tag in step 1 above.
+
+The version comes from the most recent `v*` tag, bumped according to the [Conventional Commits](https://www.conventionalcommits.org) in the merged commits:
+
+| Commits since the last tag | Bump | Example |
+| --- | --- | --- |
+| A `!` after the type, or a `BREAKING CHANGE:` body | major | `feat!: rename headerName` → `v2.0.0` |
+| A `feat:` commit | minor | `feat: add config option` → `v1.1.0` |
+| Anything else | patch | `fix: handle nil header` → `v1.0.1` |
+
+Merges that only touch documentation, CI, tests or the licence do not release, so nobody gets a new version for a typo fix. Add `[skip release]` to the merge commit to suppress a release explicitly, or run the workflow manually with a `version` input to publish an exact version.
+
+The logic lives in `.github/scripts/next-version.sh` rather than inline YAML so it can be run and tested directly:
 
 ```bash
-git tag -a v1.0.0 -m "v1.0.0"
-git push origin v1.0.0
+.github/scripts/next-version.sh
+# version=v1.0.1
+# release=true
+# reason=patch bump from v1.0.0
 ```
 
 Traefik requires dependencies to be vendored, so run `make vendor` and commit `vendor/` whenever `go.mod` changes. CI fails if the two drift apart.
@@ -135,6 +149,8 @@ Traefik requires dependencies to be vendored, so run `make vendor` and commit `v
 The catalog does not accept forks, and this repository is a fork of `mdklapwijk/traefik-plugin-request-id`. Listing it on [plugins.traefik.io](https://plugins.traefik.io) would require detaching the fork relationship through GitHub Support, or re-creating the repository as a standalone one, and then adding the `traefik-plugin` topic. The local plugin route above needs none of that and keeps the plugin private to the organisation.
 
 ## Development
+
+Requires Go 1.26 or newer, which is what `go.mod` declares and what CI runs.
 
 ```bash
 make test        # gofmt, go vet, go test
