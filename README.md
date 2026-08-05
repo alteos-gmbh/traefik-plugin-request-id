@@ -6,7 +6,7 @@ UUIDv7 (RFC 9562) embeds a Unix millisecond timestamp in the leading bits, so ge
 
 Strict ordering holds within a single Traefik process, where a sequence counter breaks ties inside the same millisecond. Across processes or hosts, ordering is approximate: it is only as good as the clock skew between them, and IDs generated in the same millisecond have no defined order. Treat the ordering as a locality property useful for storage and browsing, not as a guarantee to build logic on.
 
-If an ID must not be recoverable in time, note that UUIDv7 deliberately exposes its creation timestamp, and carries 74 random bits against UUIDv4's 122.
+If an ID must not be recoverable in time, note that UUIDv7 deliberately exposes its creation timestamp. It also carries less entropy than UUIDv4: 62 random bits against UUIDv4's 122. RFC 9562 permits the 12 bits after the version nibble to be random, but `google/uuid` uses them for the process-local sequence counter that breaks ties within a millisecond, so they are clock-derived rather than random.
 
 ## Configuration
 
@@ -77,13 +77,19 @@ http:
       service: my-service
       middlewares:
         - request-id
+
+  services:
+    my-service:
+      loadBalancer:
+        servers:
+          - url: http://backend:80
 ```
 
 The key under `plugin` (`requestid` above) must match the name used in `localPlugins`.
 
 ### Docker Compose example
 
-This uses the file provider so the example stays self-contained, with `dynamic.yml` holding the middleware and router definitions from step 3.
+This uses the file provider so the example stays self-contained, with `dynamic.yml` holding the middleware, router and service definitions from step 3. The `backend` container is what `my-service` points at; `whoami` echoes the request headers back, which makes the injected ID easy to see.
 
 ```yaml
 services:
@@ -98,7 +104,18 @@ services:
     volumes:
       - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
       - ./plugins-local/src/github.com/alteos-gmbh/traefik-plugin-request-id:/plugins-local/src/github.com/alteos-gmbh/traefik-plugin-request-id:ro
+
+  backend:
+    image: traefik/whoami
 ```
+
+The service name in `dynamic.yml` and the container it targets have to line up: `my-service` resolves to `http://backend:80`, which is the `backend` service above.
+
+```bash
+curl -si -H 'Host: example.com' http://localhost/ | grep -i x-request-id
+```
+
+That prints the header twice: once from the response, and once from the request as `whoami` received it.
 
 If you use the Docker provider instead, be aware that mounting `/var/run/docker.sock` into Traefik grants it the Docker API, which is equivalent to control over the host. Mounting the socket `:ro` does not limit this, because the API is reached through the socket rather than by writing to the file. For production, put a socket proxy with an operation allowlist in front of it, or use a provider that does not need the socket at all.
 
