@@ -24,7 +24,7 @@ func CreateConfig() *Config {
 func New(ctx context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
   return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
     if config.Enabled && request.Header.Get(config.HeaderName) == "" {
-      value := uuid.Must(uuid.NewRandom()).String()
+      value := uuid.Must(uuid.NewV7()).String()
       request.Header.Add(config.HeaderName, value)
       writer.Header().Add(config.HeaderName, value)
     }
