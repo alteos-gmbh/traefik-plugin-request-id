@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+env:
+  GO_VERSION: "1.21"
+  YAEGI_VERSION: v0.16.1
+  MODULE_PATH: github.com/alteos-gmbh/traefik-plugin-request-id
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      # Yaegi resolves imports through GOPATH, so the sources must sit at
+      # $GOPATH/src/<module path> for the interpreter check below.
+      - name: Check out into GOPATH
+        uses: actions/checkout@v5
+        with:
+          path: go/src/${{ env.MODULE_PATH }}
+          # This job runs pull request code and no step needs git auth, so do
+          # not leave GITHUB_TOKEN in the local git config.
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Check formatting
+        working-directory: go/src/${{ env.MODULE_PATH }}
+        run: |
+          unformatted=$(gofmt -l . | grep -v '^vendor/' || true)
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt -w:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        working-directory: go/src/${{ env.MODULE_PATH }}
+        run: go vet -mod=vendor ./...
+
+      - name: Test
+        working-directory: go/src/${{ env.MODULE_PATH }}
+        run: go test -mod=vendor -v -cover ./...
+
+      # Traefik never compiles plugins, it interprets them with Yaegi. Code that
+      # passes go build can still fail to load at runtime, so run the suite under
+      # the interpreter as well.
+      - name: Install Yaegi
+        run: GOBIN=/usr/local/bin go install github.com/traefik/yaegi/cmd/yaegi@${{ env.YAEGI_VERSION }}
+
+      - name: Yaegi test
+        working-directory: go/src/${{ env.MODULE_PATH }}
+        env:
+          GOPATH: ${{ github.workspace }}/go
+        # The import path is required here; "yaegi test ." cannot resolve the
+        # vendored dependencies. The yaegi tag excludes tests the interpreter
+        # cannot run; see entropy_test.go.
+        run: yaegi test -tags yaegi -v ${{ env.MODULE_PATH }}
+
+      # Traefik requires dependencies to be vendored, so the committed tree must
+      # stay in sync with go.mod.
+      - name: Check vendor tree is up to date
+        working-directory: go/src/${{ env.MODULE_PATH }}
+        run: |
+          go mod vendor
+          git diff --exit-code -- go.mod go.sum vendor/ || {
+            echo "vendor/ is out of sync with go.mod; run 'go mod vendor' and commit the result"
+            exit 1
+          }
+
+  manifest:
+    name: Manifest
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install PyYAML
+        run: pip install --quiet pyyaml
+
+      # A malformed .traefik.yml, or an import path that does not match the
+      # module path, breaks plugin loading with an error that is awkward to
+      # debug inside Traefik.
+      - name: Validate .traefik.yml
+        run: |
+          python3 - <<'PY'
+          import sys
+          import yaml
+
+          with open(".traefik.yml") as fh:
+              manifest = yaml.safe_load(fh)
+
+          with open("go.mod") as fh:
+              module = next(
+                  line.split()[1] for line in fh if line.startswith("module ")
+              )
+
+          errors = []
+          for field in ("displayName", "type", "import", "summary", "testData"):
+              if not manifest.get(field):
+                  errors.append(f"missing required field: {field}")
+
+          if manifest.get("type") != "middleware":
+              errors.append(f"type is {manifest.get('type')!r}, want 'middleware'")
+
+          if manifest.get("import") != module:
+              errors.append(
+                  f"import is {manifest.get('import')!r} but go.mod declares {module!r}"
+              )
+
+          if errors:
+              print("\n".join(errors))
+              sys.exit(1)
+
+          print(f"manifest OK, import matches module path: {module}")
+          PY

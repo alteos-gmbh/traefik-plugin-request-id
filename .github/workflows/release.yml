@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  GO_VERSION: "1.21"
+  YAEGI_VERSION: v0.16.1
+  MODULE_PATH: github.com/alteos-gmbh/traefik-plugin-request-id
+
+permissions:
+  contents: read
+
+jobs:
+  # Never publish a tag that cannot load. Consumers pin to these tags, and a
+  # broken one is awkward to withdraw once anyone has fetched it.
+  #
+  # This job executes the tagged code, so it runs with contents: read only. The
+  # write-capable token lives in the publish job below, which executes none of
+  # it.
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out into GOPATH
+        uses: actions/checkout@v5
+        with:
+          path: go/src/${{ env.MODULE_PATH }}
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Test
+        working-directory: go/src/${{ env.MODULE_PATH }}
+        run: go test -mod=vendor -v ./...
+
+      - name: Install Yaegi
+        run: GOBIN=/usr/local/bin go install github.com/traefik/yaegi/cmd/yaegi@${{ env.YAEGI_VERSION }}
+
+      - name: Yaegi test
+        working-directory: go/src/${{ env.MODULE_PATH }}
+        env:
+          GOPATH: ${{ github.workspace }}/go
+        run: yaegi test -tags yaegi -v ${{ env.MODULE_PATH }}
+
+  # Deliberately does not check the repository out. gh talks to the API, so the
+  # write-capable token is never exposed to the tagged code.
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    needs: test
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TAG" \
+            --generate-notes \
+            --verify-tag
