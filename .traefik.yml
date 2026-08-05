@@ -1,6 +1,6 @@
 displayName: X-Request-ID
 type: middleware
-import: github.com/mdklapwijk/traefik-plugin-request-id
+import: github.com/alteos-gmbh/traefik-plugin-request-id
 summary: Injects X-Request-ID header with a UUIDv7 value into HTTP requests and responses.
 testData:
   HeaderName: "X-Request-ID"
