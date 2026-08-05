@@ -11,6 +11,9 @@ env:
   YAEGI_VERSION: v0.16.1
   MODULE_PATH: github.com/alteos-gmbh/traefik-plugin-request-id
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test
@@ -23,6 +26,9 @@ jobs:
         uses: actions/checkout@v5
         with:
           path: go/src/${{ env.MODULE_PATH }}
+          # This job runs pull request code and no step needs git auth, so do
+          # not leave GITHUB_TOKEN in the local git config.
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -80,6 +86,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Install PyYAML
         run: pip install --quiet pyyaml

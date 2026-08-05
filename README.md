@@ -25,14 +25,18 @@ The plugin is distributed as a local plugin: Traefik reads the sources from disk
 
 ```bash
 VERSION=v1.0.0
-mkdir -p plugins-local/src/github.com/alteos-gmbh
+DEST=plugins-local/src/github.com/alteos-gmbh/traefik-plugin-request-id
+
+# Replace rather than merge, so an upgrade cannot leave stale files behind.
+rm -rf "$DEST"
+mkdir -p "$DEST"
 curl -fsSL "https://github.com/alteos-gmbh/traefik-plugin-request-id/archive/refs/tags/${VERSION}.tar.gz" \
-  | tar -xz -C plugins-local/src/github.com/alteos-gmbh
-mv "plugins-local/src/github.com/alteos-gmbh/traefik-plugin-request-id-${VERSION#v}" \
-   plugins-local/src/github.com/alteos-gmbh/traefik-plugin-request-id
+  | tar -xz --strip-components=1 -C "$DEST"
 ```
 
 The directory name has to match the module path exactly. Traefik resolves the plugin by that path and reports a load error if it differs.
+
+`--strip-components=1` drops the `traefik-plugin-request-id-<version>/` prefix GitHub puts in its archives, so the sources land directly in `$DEST`.
 
 In an image build, copy the sources in instead:
 
