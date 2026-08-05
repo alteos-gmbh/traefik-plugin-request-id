@@ -59,8 +59,9 @@ jobs:
         env:
           GOPATH: ${{ github.workspace }}/go
         # The import path is required here; "yaegi test ." cannot resolve the
-        # vendored dependencies.
-        run: yaegi test -v ${{ env.MODULE_PATH }}
+        # vendored dependencies. The yaegi tag excludes tests the interpreter
+        # cannot run; see entropy_test.go.
+        run: yaegi test -tags yaegi -v ${{ env.MODULE_PATH }}
 
       # Traefik requires dependencies to be vendored, so the committed tree must
       # stay in sync with go.mod.

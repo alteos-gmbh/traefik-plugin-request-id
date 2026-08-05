@@ -4,6 +4,10 @@ This plugin will add the X-Request-ID header with a generated UUIDv7 value to HT
 
 UUIDv7 (RFC 9562) embeds a Unix millisecond timestamp in the leading bits, so generated IDs sort chronologically as strings. That makes request IDs cluster well in log stores and time-ordered database indexes, while the remaining random bits keep them unguessable in practice.
 
+Strict ordering holds within a single Traefik process, where a sequence counter breaks ties inside the same millisecond. Across processes or hosts, ordering is approximate: it is only as good as the clock skew between them, and IDs generated in the same millisecond have no defined order. Treat the ordering as a locality property useful for storage and browsing, not as a guarantee to build logic on.
+
+If an ID must not be recoverable in time, note that UUIDv7 deliberately exposes its creation timestamp, and carries 74 random bits against UUIDv4's 122.
+
 ## Configuration
 
 | Option | Type | Default | Description |

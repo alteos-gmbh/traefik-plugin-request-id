@@ -15,11 +15,12 @@ test:
 # so a package that builds with the Go toolchain can still fail at runtime.
 # Yaegi resolves imports through GOPATH, so the sources have to be reachable at
 # $GOPATH/src/$(MODULE). Pass the import path, not ".": the "." form cannot
-# resolve the vendored dependencies.
+# resolve the vendored dependencies. The yaegi tag excludes tests the
+# interpreter cannot run; see entropy_test.go.
 yaegi-test:
 	@mkdir -p $(dir $(SRCDIR))
 	@if [ ! -e $(SRCDIR) ]; then ln -s $(CURDIR) $(SRCDIR); fi
-	GOPATH=$(GOPATH) yaegi test -v $(MODULE)
+	GOPATH=$(GOPATH) yaegi test -tags yaegi -v $(MODULE)
 
 vendor:
 	go mod vendor

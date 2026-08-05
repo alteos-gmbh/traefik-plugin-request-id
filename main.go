@@ -2,8 +2,10 @@ package traefik_plugin_request_id
 
 import (
 	"context"
-	"github.com/google/uuid"
+	"log"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 const defaultHeader = "X-Request-ID"
@@ -21,12 +23,20 @@ func CreateConfig() *Config {
 	}
 }
 
-func New(ctx context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
+func New(ctx context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if config.Enabled && request.Header.Get(config.HeaderName) == "" {
-			value := uuid.Must(uuid.NewV7()).String()
-			request.Header.Add(config.HeaderName, value)
-			writer.Header().Add(config.HeaderName, value)
+			id, err := uuid.NewV7()
+			if err != nil {
+				// Only reachable if the entropy source fails. Tagging requests is
+				// a diagnostic concern, so forward the request untagged rather
+				// than turning it into an error, and log so the gap is visible.
+				log.Printf("%s: could not generate a request ID: %v", name, err)
+			} else {
+				value := id.String()
+				request.Header.Add(config.HeaderName, value)
+				writer.Header().Add(config.HeaderName, value)
+			}
 		}
 		next.ServeHTTP(writer, request)
 	}), nil

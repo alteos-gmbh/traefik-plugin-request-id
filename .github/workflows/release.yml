@@ -44,7 +44,7 @@ jobs:
         working-directory: go/src/${{ env.MODULE_PATH }}
         env:
           GOPATH: ${{ github.workspace }}/go
-        run: yaegi test -v ${{ env.MODULE_PATH }}
+        run: yaegi test -tags yaegi -v ${{ env.MODULE_PATH }}
 
       - name: Create release
         working-directory: go/src/${{ env.MODULE_PATH }}
