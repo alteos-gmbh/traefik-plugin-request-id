@@ -60,7 +60,7 @@ spec:
   initContainers:
     - name: copy-requestid-plugin
       image: ghcr.io/alteos-gmbh/traefik-plugin-request-id:v1.0.0
-      command: ["sh", "-c", "cp -r /plugins-local/. /out/"]
+      command: ["sh", "-c", "rm -rf /out/* && cp -r /plugins-local/. /out/"]
       volumeMounts:
         - name: plugins-local
           mountPath: /out
