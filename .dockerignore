@@ -1,0 +1,9 @@
+.git
+.github
+.idea
+.claude
+Dockerfile
+.dockerignore
+Makefile
+README.md
+**/*_test.go

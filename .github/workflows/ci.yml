@@ -30,7 +30,7 @@ jobs:
       # Yaegi resolves imports through GOPATH, so the sources must sit at
       # $GOPATH/src/<module path> for the interpreter check below.
       - name: Check out into GOPATH
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: go/src/${{ env.MODULE_PATH }}
           # This job runs pull request code and no step needs git auth, so do
@@ -97,7 +97,7 @@ jobs:
       image: ghcr.io/alteos-gmbh/docker-images/build/python:latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -140,3 +140,25 @@ jobs:
 
           print(f"manifest OK, import matches module path: {module}")
           PY
+
+  # Builds the init-container image (see Dockerfile) without pushing it, so a
+  # broken Dockerfile fails here instead of in the release workflow that
+  # actually publishes it.
+  docker:
+    name: Docker build
+    runs-on: codebuild-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false

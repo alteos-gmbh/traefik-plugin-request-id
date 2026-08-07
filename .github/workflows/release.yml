@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Check out into GOPATH
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: go/src/${{ env.MODULE_PATH }}
           persist-credentials: false
@@ -65,7 +65,7 @@ jobs:
       release: ${{ steps.decide.outputs.release }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # The script reads the tags and the commits since the most recent one.
           fetch-depth: 0
@@ -128,3 +128,44 @@ jobs:
 
           printf '%s' "$response" |
             python3 -c 'import json, sys; print("released:", json.load(sys.stdin)["html_url"])'
+
+  # Publishes the init-container image (see Dockerfile) that carries this
+  # plugin's source, for clusters that copy plugins-local/ onto a shared
+  # volume instead of baking them into a custom Traefik image. Unlike
+  # publish above, this job checks the repository out: packages: write is a
+  # separate scope from contents: write, so giving it the merged code does
+  # not expose the token that can create releases.
+  image:
+    name: Publish image
+    runs-on: codebuild-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    needs:
+      - test
+      - version
+    if: needs.version.outputs.release == 'true'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ needs.version.outputs.version }}
+            ghcr.io/${{ github.repository }}:latest
