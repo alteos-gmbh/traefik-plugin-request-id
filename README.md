@@ -47,7 +47,7 @@ COPY plugins-local/ /plugins-local/
 
 #### Kubernetes init container
 
-Kubernetes 1.36 can mount an OCI image straight into a pod as a volume, which would make this unnecessary, but on 1.34 the plugin has to be copied onto the shared volume by an init container instead.
+Kubernetes 1.36 can [mount an OCI image straight into a pod as a volume](https://kubernetes.io/docs/concepts/storage/volumes/#image), which would make this unnecessary, but on earlier versions the plugin has to be copied onto a shared volume by an init container instead.
 
 Every tagged release also publishes `ghcr.io/alteos-gmbh/traefik-plugin-request-id:<version>`: an image that carries nothing but this plugin's sources (including its vendored dependencies) at `/plugins-local/src/github.com/alteos-gmbh/traefik-plugin-request-id`, built from the `Dockerfile` in this repo. An init container copies that directory onto an `emptyDir` shared with the Traefik container, which mounts it at the path Traefik's local-plugin loader expects:
 
