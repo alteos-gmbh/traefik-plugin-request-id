@@ -16,7 +16,7 @@ permissions:
 jobs:
   test:
     name: Test
-    runs-on: codebuild-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: codebuild-github-actions-runner-novpc-${{ github.run_id }}-${{ github.run_attempt }}
     # Go deliberately comes from the official image rather than the org's
     # build/go image. That one is FROM golang:alpine and only rebuilds when its
     # own Dockerfile changes, so the Go version it carries is frozen at whenever
@@ -88,7 +88,7 @@ jobs:
 
   manifest:
     name: Manifest
-    runs-on: codebuild-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: codebuild-github-actions-runner-novpc-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: read
       # Needed to pull the image from the org's private GHCR registry.
@@ -146,7 +146,7 @@ jobs:
   # actually publishes it.
   docker:
     name: Docker build
-    runs-on: codebuild-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: codebuild-github-actions-runner-novpc-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: read
 

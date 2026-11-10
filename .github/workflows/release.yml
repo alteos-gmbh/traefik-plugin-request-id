@@ -30,7 +30,7 @@ jobs:
   # write-capable token lives in publish, which executes none of it.
   test:
     name: Test
-    runs-on: codebuild-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: codebuild-github-actions-runner-novpc-${{ github.run_id }}-${{ github.run_attempt }}
     container:
       image: golang:1.26
 
@@ -56,7 +56,7 @@ jobs:
 
   version:
     name: Decide version
-    runs-on: codebuild-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: codebuild-github-actions-runner-novpc-${{ github.run_id }}-${{ github.run_attempt }}
     container:
       image: golang:1.26
 
@@ -86,7 +86,7 @@ jobs:
   # directly rather than through gh, which is absent from the runner image.
   publish:
     name: Publish
-    runs-on: codebuild-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: codebuild-github-actions-runner-novpc-${{ github.run_id }}-${{ github.run_attempt }}
     container:
       image: golang:1.26
     needs:
@@ -137,7 +137,7 @@ jobs:
   # not expose the token that can create releases.
   image:
     name: Publish image
-    runs-on: codebuild-github-actions-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: codebuild-github-actions-runner-novpc-${{ github.run_id }}-${{ github.run_attempt }}
     needs:
       - test
       - version
